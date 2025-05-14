@@ -27,8 +27,9 @@ export async function POST(request: Request) {
   // Prepare options for navigator.credentials.get()
   // We only allow the specific credential associated with the logged-in user
   // for this signing operation. Discoverable credentials are not suitable here.
+  console.log("challenge", challenge);
   const options: PublicKeyCredentialRequestOptionsJSON = {
-    challenge: isoBase64URL.fromBuffer(Buffer.from(challenge, "utf8")), // Encode the custom challenge
+    challenge: isoBase64URL.fromBuffer(Buffer.from(challenge, "hex")), // Encode the custom challenge
     rpId: rpID,
     allowCredentials: [
       {

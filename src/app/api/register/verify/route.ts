@@ -13,6 +13,7 @@ import type {
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 import { decode } from "cbor-x"; // Use decode from cbor-x
 import { NextResponse } from "next/server";
+import { fundWallet, generateWallet, installHook } from "@/app/xahau";
 
 const rpID = process.env.RP_ID || "localhost";
 const origin = process.env.ORIGIN || `http://${rpID}:3000`;
@@ -148,11 +149,16 @@ export async function POST(request: Request) {
 
       const publicKeyCoords = extractPublicKeyCoords(credentialPublicKey);
 
+      const wallet = await generateWallet()
+      await fundWallet(wallet)
+      await installHook(wallet)
+
       const newAuthenticator = {
         credentialID: id, // Store the original Base64URL string ID
         credentialPublicKey: bufferToHex(credentialPublicKey), // Store as Hex
         publicKeyCoords: publicKeyCoords, // Store extracted coords
         counter,
+        address: wallet.address,
         transports: transports, // Use transports from credential
       };
 

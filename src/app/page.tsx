@@ -9,8 +9,10 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
 } from "@simplewebauthn/browser";
 import { useState } from "react";
+import { encode } from "xahau";
 
 export default function Home() {
+  const [address, setAddress] = useState<string>("");
   const [username, setUsername] = useState("");
   const [message, setMessage] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
@@ -18,6 +20,7 @@ export default function Home() {
   const [debugData, setDebugData] = useState<any>(null);
   const [challengeInput, setChallengeInput] =
     useState<string>("Sign this data");
+  const [txJson, setTxJson] = useState<string>("");
   const [signResult, setSignResult] = useState<any>(null);
 
   const handleRegister = async () => {
@@ -147,6 +150,17 @@ export default function Home() {
 
       setMessage(`Login successful! Welcome, ${verificationJSON.username}!`);
       setLoggedInUser(verificationJSON.username);
+      setAddress(verificationJSON.address);
+      console.log(verificationJSON)
+      const tx_json = {
+        TransactionType: "AccountSet",
+        Account: address,
+      }
+      console.log('tx_json', tx_json)
+      setTxJson(JSON.stringify(tx_json, null, 2))
+      const tx_blob = encode(tx_json as any)
+      setChallengeInput(tx_blob)
+      
       setDebugData({
         authenticationOptions: authOptsJSON,
         authenticationResponse: assertResp,
@@ -315,6 +329,27 @@ export default function Home() {
             <h2 className="text-lg font-semibold text-center text-gray-700">
               Sign Custom Challenge
             </h2>
+            <div>
+              <label
+                htmlFor="challengeInput"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Tx Json
+              </label>
+              <textarea
+                id="txJson"
+                name="txJson"
+                rows={7}
+                value={txJson}
+                onChange={(e) => {
+                  setTxJson(e.target.value)
+                  const tx_blob = encode(JSON.parse(e.target.value))
+                  setChallengeInput(tx_blob)
+                }
+                }
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700"
+              />
+            </div>
             <div>
               <label
                 htmlFor="challengeInput"

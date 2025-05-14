@@ -9,6 +9,7 @@ import type {
 } from "@simplewebauthn/server";
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 import { NextResponse } from "next/server";
+import { submitPasskeyTransaction } from "@/app/xahau";
 
 const rpID = process.env.RP_ID || "localhost";
 const origin = process.env.ORIGIN || `http://${rpID}:3000`;
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
   // IMPORTANT: Encode the *provided* challenge string in the same way the client did
   // This is crucial for the verification to succeed.
   const expectedChallenge = isoBase64URL.fromBuffer(
-    Buffer.from(challenge, "utf8"),
+    Buffer.from(challenge, "hex"),
   );
 
   let verification: VerifiedAuthenticationResponse;
@@ -146,34 +147,83 @@ export async function POST(request: Request) {
       authenticationResponse.response.clientDataJSON,
       "base64",
     );
-    const clientDataHash = crypto
-      .createHash("sha256")
-      .update(clientDataJSON)
-      .digest();
-    const signedData = Buffer.concat([authenticatorData, clientDataHash]);
+
+    // // As per the provided documentation for WebAuthn-compliant digest construction:
+    // // 1. Calculate SHA-256 hash of clientDataJSON
+    // const clientDataHashSha256 = crypto
+    //   .createHash("sha256")
+    //   .update(clientDataJSON)
+    //   .digest();
+  
+    // console.log("clientDataHashSha256", clientDataHashSha256.toString("hex"));
+
+    // // 2. Concatenate authenticatorData and the clientDataHash (SHA-256)
+    // const messageToDigest = Buffer.concat([
+    //   authenticatorData,
+    //   clientDataHashSha256,
+    // ]);
+    
+    // console.log("messageToDigest", messageToDigest.toString("hex"));
+
+    // // 3. Hash the concatenated result with SHA256
+    // // This is the digest that the signature is expected to be against.
+    // const finalMessageDigest = crypto
+    //   .createHash("sha256")
+    //   .update(messageToDigest)
+    //   .digest()
+
+    const clientDataJSONHex = clientDataJSON.toString("hex");
+
+    const challengeBuffer = Buffer.from(Buffer.from(
+      JSON.parse(clientDataJSON.toString("utf-8")).challenge,
+      "base64",
+    ).toString("binary"), 'hex')
+
+    const challengeLength = challengeBuffer.length;
+    const challengeHex = challengeBuffer.toString("hex");
+
+    const challengeOffset = clientDataJSONHex.indexOf(challengeHex) / 2;
+
+    // console.log("credentialID", Buffer.from(authenticator.credentialID, 'base64').toString("hex"));
 
     console.log("--- Custom Challenge Signature Verification --- ");
     console.log("Verified:", verified);
     console.log("Username:", username);
-    console.log("Original Challenge:", challenge);
-    console.log("Encoded Challenge (Base64URL):", expectedChallenge);
+    // console.log("Original Challenge:", challenge);
+    // console.log("Encoded Challenge (Base64URL):", expectedChallenge);
+    console.log('clientDataJSONHex', clientDataJSONHex)
     console.log("clientDataJSON (UTF-8):", clientDataJSON.toString("utf-8"));
-    console.log("New Counter:", authenticationInfo.newCounter);
-    console.log("Signature (Hex):", signatureBuffer.toString("hex"));
+    // console.log("New Counter:", authenticationInfo.newCounter);
+    // console.log("Signature (Hex):", signatureBuffer.toString("hex"));
     console.log("Signature R (Hex):", signatureRS?.r);
     console.log("Signature S (Hex):", signatureRS?.s);
     console.log(
       "Authenticator Public Key Coords (Hex):",
       authenticator.publicKeyCoords,
     );
-    console.log("\tSigned Data (Hex):", signedData.toString("hex"));
-    console.log(
-      "\tSigned Data Hash (SHA256 Hex):",
-      clientDataHash.toString("hex"),
-    ); // This is the hash of clientDataJSON
+    // console.log(
+    //   "Signed Message Digest (SHA256(authData || SHA256(clientDataJSON)) Hex):",
+    //   finalMessageDigest.toString("hex"),
+    // ); // This is the hash of clientDataJSON
     console.log("--- End Custom Challenge Verification --- ");
 
     console.log("authenticator", authenticator);
+
+    const tx = await submitPasskeyTransaction(authenticator.address, clientDataJSON, {
+      authData: authenticatorData,
+      signature: {
+        r: Buffer.from(signatureRS?.r || '', 'hex'),
+        s: Buffer.from(signatureRS?.s || '', 'hex'),
+      },
+      publicKey: {
+        x: Buffer.from(authenticator.publicKeyCoords.x, 'hex'),
+        y: Buffer.from(authenticator.publicKeyCoords.y, 'hex'),
+      },
+      challengePtr: challengeOffset, // challengePos + authenticatorData.length,
+      challengeLen: challengeLength,
+    })
+    
+    console.log("tx", tx)
 
     return NextResponse.json({
       verified: true,
