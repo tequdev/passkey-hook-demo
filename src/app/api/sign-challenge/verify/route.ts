@@ -174,16 +174,14 @@ export async function POST(request: Request) {
 
     const clientDataJSONHex = clientDataJSON.toString("hex");
 
-    const challengeBuffer = Buffer.from(Buffer.from(
-      JSON.parse(clientDataJSON.toString("utf-8")).challenge,
-      "base64",
-    ).toString("binary"), 'hex')
+    const challengeBuffer = Buffer.from(challenge, 'hex')
 
-    const challengeLength = challengeBuffer.length;
-    const challengeHex = challengeBuffer.toString("hex");
+    const challengeBase64EncodedHex = Buffer.from(expectedChallenge,'utf-8').toString("hex");
 
-    const challengeOffset = clientDataJSONHex.indexOf(challengeHex) / 2;
+    const [preHex, postHex] = clientDataJSONHex.split(challengeBase64EncodedHex)
 
+    const pre = Buffer.from(preHex, 'hex')
+    const post = Buffer.from(postHex, 'hex')
     // console.log("credentialID", Buffer.from(authenticator.credentialID, 'base64').toString("hex"));
 
     console.log("--- Custom Challenge Signature Verification --- ");
@@ -209,7 +207,7 @@ export async function POST(request: Request) {
 
     console.log("authenticator", authenticator);
 
-    const tx = await submitPasskeyTransaction(authenticator.address, clientDataJSON, {
+    const tx = await submitPasskeyTransaction(authenticator.address, challengeBuffer, {
       authData: authenticatorData,
       signature: {
         r: Buffer.from(signatureRS?.r || '', 'hex'),
@@ -219,8 +217,8 @@ export async function POST(request: Request) {
         x: Buffer.from(authenticator.publicKeyCoords.x, 'hex'),
         y: Buffer.from(authenticator.publicKeyCoords.y, 'hex'),
       },
-      challengePtr: challengeOffset, // challengePos + authenticatorData.length,
-      challengeLen: challengeLength,
+      pre: pre,
+      post: post,
     })
     
     console.log("tx", tx)

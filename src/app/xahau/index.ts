@@ -4,7 +4,7 @@ import { Wallet, Client, ECDSA, xahToDrops, SetHookFlags, calculateHookOn, Trans
 
 const genesis = Wallet.fromSecret('snoPBrXtMeMyMHUVTgbuqAfg1SUTb', { algorithm: ECDSA.secp256k1 })
 
-const client = new Client('ws://localhost:6006')
+const client = new Client('ws://0.0.0.0:6006')
 
 const generateWallet = async () => {
   return Wallet.generate()
@@ -74,8 +74,8 @@ type VerificationData = {
     y: Buffer
   }
   authData: Buffer
-  challengePtr: number
-  challengeLen: number
+  pre: Buffer
+  post:Buffer
 }
 
 const bufferToHex = (buffer: ArrayBuffer) => {
@@ -84,7 +84,7 @@ const bufferToHex = (buffer: ArrayBuffer) => {
     .join("").toUpperCase();
 }
 
-const submitPasskeyTransaction = async (address: string, clientDataJSON: Buffer, verificationData: VerificationData) => {
+const submitPasskeyTransaction = async (address: string, challenge: Buffer, verificationData: VerificationData) => {
   await client.connect()
   const intervalId = setInterval(() => {
     client.request({ command: 'ledger_accept' as any })
@@ -93,7 +93,7 @@ const submitPasskeyTransaction = async (address: string, clientDataJSON: Buffer,
     TransactionType: 'Invoke',
     Account: genesis.address,
     Destination: address,
-    Blob: clientDataJSON.toString('hex').toUpperCase(),
+    Blob: challenge.toString('hex').toUpperCase(),
     HookParameters: [
       {
         HookParameter: {
@@ -126,14 +126,14 @@ const submitPasskeyTransaction = async (address: string, clientDataJSON: Buffer,
       },
       {
         HookParameter: {
-          HookParameterName: convertStringToHex('ptr').toUpperCase(),
-          HookParameterValue: bufferToHex(new Uint16Array([verificationData.challengePtr]).buffer),
+          HookParameterName: convertStringToHex('pre').toUpperCase(),
+          HookParameterValue: verificationData.pre.toString('hex').toUpperCase(),
         },
       },
       {
         HookParameter: {
-          HookParameterName: convertStringToHex('len').toUpperCase(),
-          HookParameterValue: bufferToHex(new Uint16Array([verificationData.challengeLen]).buffer),
+          HookParameterName: convertStringToHex('post').toUpperCase(),
+          HookParameterValue: verificationData.post.toString('hex').toUpperCase(),
         },
       },
     ]
@@ -146,7 +146,6 @@ const submitPasskeyTransaction = async (address: string, clientDataJSON: Buffer,
     ledger_index: 'validated',
     limit: 1,
   })
-  console.log(tx.result)
   await client.disconnect()
   return tx.result.transactions[0]
 }

@@ -154,7 +154,7 @@ export default function Home() {
       console.log(verificationJSON)
       const tx_json = {
         TransactionType: "AccountSet",
-        Account: address,
+        Account: verificationJSON.address,
       }
       console.log('tx_json', tx_json)
       setTxJson(JSON.stringify(tx_json, null, 2))
