@@ -143,7 +143,11 @@ export async function POST(request: Request) {
 
     // You can now use passkeyData within your application logic
     // For the POC, we just return verification status
-    return NextResponse.json({ verified: true, username, address: authenticator.address });
+    return NextResponse.json({
+      verified: true,
+      username,
+      address: authenticator.address,
+    });
   }
   console.error("Authentication failed verification.");
   return NextResponse.json({ verified: false }, { status: 400 });

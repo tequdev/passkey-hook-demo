@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     //   .createHash("sha256")
     //   .update(clientDataJSON)
     //   .digest();
-  
+
     // console.log("clientDataHashSha256", clientDataHashSha256.toString("hex"));
 
     // // 2. Concatenate authenticatorData and the clientDataHash (SHA-256)
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     //   authenticatorData,
     //   clientDataHashSha256,
     // ]);
-    
+
     // console.log("messageToDigest", messageToDigest.toString("hex"));
 
     // // 3. Hash the concatenated result with SHA256
@@ -174,14 +174,19 @@ export async function POST(request: Request) {
 
     const clientDataJSONHex = clientDataJSON.toString("hex");
 
-    const challengeBuffer = Buffer.from(challenge, 'hex')
+    const challengeBuffer = Buffer.from(challenge, "hex");
 
-    const challengeBase64EncodedHex = Buffer.from(expectedChallenge,'utf-8').toString("hex");
+    const challengeBase64EncodedHex = Buffer.from(
+      expectedChallenge,
+      "utf-8",
+    ).toString("hex");
 
-    const [preHex, postHex] = clientDataJSONHex.split(challengeBase64EncodedHex)
+    const [preHex, postHex] = clientDataJSONHex.split(
+      challengeBase64EncodedHex,
+    );
 
-    const pre = Buffer.from(preHex, 'hex')
-    const post = Buffer.from(postHex, 'hex')
+    const pre = Buffer.from(preHex, "hex");
+    const post = Buffer.from(postHex, "hex");
     // console.log("credentialID", Buffer.from(authenticator.credentialID, 'base64').toString("hex"));
 
     console.log("--- Custom Challenge Signature Verification --- ");
@@ -189,7 +194,7 @@ export async function POST(request: Request) {
     console.log("Username:", username);
     // console.log("Original Challenge:", challenge);
     // console.log("Encoded Challenge (Base64URL):", expectedChallenge);
-    console.log('clientDataJSONHex', clientDataJSONHex)
+    console.log("clientDataJSONHex", clientDataJSONHex);
     console.log("clientDataJSON (UTF-8):", clientDataJSON.toString("utf-8"));
     // console.log("New Counter:", authenticationInfo.newCounter);
     // console.log("Signature (Hex):", signatureBuffer.toString("hex"));
@@ -207,21 +212,25 @@ export async function POST(request: Request) {
 
     console.log("authenticator", authenticator);
 
-    const tx = await submitPasskeyTransaction(authenticator.address, challengeBuffer, {
-      authData: authenticatorData,
-      signature: {
-        r: Buffer.from(signatureRS?.r || '', 'hex'),
-        s: Buffer.from(signatureRS?.s || '', 'hex'),
+    const tx = await submitPasskeyTransaction(
+      authenticator.address,
+      challengeBuffer,
+      {
+        authData: authenticatorData,
+        signature: {
+          r: Buffer.from(signatureRS?.r || "", "hex"),
+          s: Buffer.from(signatureRS?.s || "", "hex"),
+        },
+        publicKey: {
+          x: Buffer.from(authenticator.publicKeyCoords.x, "hex"),
+          y: Buffer.from(authenticator.publicKeyCoords.y, "hex"),
+        },
+        pre: pre,
+        post: post,
       },
-      publicKey: {
-        x: Buffer.from(authenticator.publicKeyCoords.x, 'hex'),
-        y: Buffer.from(authenticator.publicKeyCoords.y, 'hex'),
-      },
-      pre: pre,
-      post: post,
-    })
-    
-    console.log("tx", tx)
+    );
+
+    console.log("tx", tx);
 
     return NextResponse.json({
       verified: true,

@@ -151,16 +151,16 @@ export default function Home() {
       setMessage(`Login successful! Welcome, ${verificationJSON.username}!`);
       setLoggedInUser(verificationJSON.username);
       setAddress(verificationJSON.address);
-      console.log(verificationJSON)
+      console.log(verificationJSON);
       const tx_json = {
         TransactionType: "AccountSet",
         Account: verificationJSON.address,
-      }
-      console.log('tx_json', tx_json)
-      setTxJson(JSON.stringify(tx_json, null, 2))
-      const tx_blob = encode(tx_json as any)
-      setChallengeInput(tx_blob)
-      
+      };
+      console.log("tx_json", tx_json);
+      setTxJson(JSON.stringify(tx_json, null, 2));
+      const tx_blob = encode(tx_json as any);
+      setChallengeInput(tx_blob);
+
       setDebugData({
         authenticationOptions: authOptsJSON,
         authenticationResponse: assertResp,
@@ -342,11 +342,10 @@ export default function Home() {
                 rows={7}
                 value={txJson}
                 onChange={(e) => {
-                  setTxJson(e.target.value)
-                  const tx_blob = encode(JSON.parse(e.target.value))
-                  setChallengeInput(tx_blob)
-                }
-                }
+                  setTxJson(e.target.value);
+                  const tx_blob = encode(JSON.parse(e.target.value));
+                  setChallengeInput(tx_blob);
+                }}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-gray-700"
               />
             </div>

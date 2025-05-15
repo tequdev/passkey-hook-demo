@@ -149,9 +149,9 @@ export async function POST(request: Request) {
 
       const publicKeyCoords = extractPublicKeyCoords(credentialPublicKey);
 
-      const wallet = await generateWallet()
-      await fundWallet(wallet)
-      await installHook(wallet)
+      const wallet = await generateWallet();
+      await fundWallet(wallet);
+      await installHook(wallet);
 
       const newAuthenticator = {
         credentialID: id, // Store the original Base64URL string ID

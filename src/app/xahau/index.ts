@@ -1,153 +1,211 @@
-import { readFileSync } from 'node:fs'
-import { setInterval } from 'node:timers'
-import { Wallet, Client, ECDSA, xahToDrops, SetHookFlags, calculateHookOn, Transaction, SubmittableTransaction, convertStringToHex, encode } from 'xahau'
+import { readFileSync } from "node:fs";
+import { setInterval } from "node:timers";
+import {
+  Wallet,
+  Client,
+  ECDSA,
+  xahToDrops,
+  SetHookFlags,
+  calculateHookOn,
+  Transaction,
+  SubmittableTransaction,
+  convertStringToHex,
+  encode,
+} from "xahau";
 
-const genesis = Wallet.fromSecret('snoPBrXtMeMyMHUVTgbuqAfg1SUTb', { algorithm: ECDSA.secp256k1 })
+const genesis = Wallet.fromSecret("snoPBrXtMeMyMHUVTgbuqAfg1SUTb", {
+  algorithm: ECDSA.secp256k1,
+});
 
-const client = new Client('ws://0.0.0.0:6006')
+const client = new Client("ws://0.0.0.0:6006");
 
 const generateWallet = async () => {
-  return Wallet.generate()
-}
+  return Wallet.generate();
+};
 
 const fundWallet = async (wallet: Wallet) => {
-  await client.connect()
+  await client.connect();
   const intervalId = setInterval(() => {
-    client.request({ command: 'ledger_accept' as any })
-  }, 500)
-  await client.submitAndWait({
-    TransactionType: 'Payment',
-    Account: genesis.address,
-    Amount: xahToDrops(1000),
-    Destination: wallet.address,
-  }, { wallet: genesis })
-  clearInterval(intervalId)
-  await client.disconnect()
-}
+    client.request({ command: "ledger_accept" as any });
+  }, 500);
+  await client.submitAndWait(
+    {
+      TransactionType: "Payment",
+      Account: genesis.address,
+      Amount: xahToDrops(1000),
+      Destination: wallet.address,
+    },
+    { wallet: genesis },
+  );
+  clearInterval(intervalId);
+  await client.disconnect();
+};
 
 const installHook = async (wallet: Wallet) => {
-  await client.connect()
+  await client.connect();
   const intervalId = setInterval(() => {
-    client.request({ command: 'ledger_accept' as any })
-  }, 500)
-  console.log(JSON.stringify({
-    TransactionType: 'SetHook',
-    Account: wallet.address,
-    Hooks: [
+    client.request({ command: "ledger_accept" as any });
+  }, 500);
+  console.log(
+    JSON.stringify(
       {
-        Hook: {
-          CreateCode: readFileSync('contracts/index.wasm').toString('hex').toUpperCase(),
-          Flags: SetHookFlags.hsfOverride,
-          HookApiVersion: 0,
-          HookNamespace: '00'.repeat(32),
-          HookOn: calculateHookOn(['Invoke']),
-        }
-      }
-    ]
-  }, null, 2))
-  await client.submitAndWait({
-    TransactionType: 'SetHook',
-    Account: wallet.address,
-    Hooks: [
-      {
-        Hook: {
-          CreateCode: readFileSync('contracts/index.wasm').toString('hex').toUpperCase(),
-          Flags: SetHookFlags.hsfOverride,
-          HookApiVersion: 0,
-          HookNamespace: '00'.repeat(32),
-          HookOn: calculateHookOn(['Invoke']),
-        }
-      }
-    ]
-  }, { wallet })
-  clearInterval(intervalId)
-  await client.disconnect()
-}
+        TransactionType: "SetHook",
+        Account: wallet.address,
+        Hooks: [
+          {
+            Hook: {
+              CreateCode: readFileSync("contracts/index.wasm")
+                .toString("hex")
+                .toUpperCase(),
+              Flags: SetHookFlags.hsfOverride,
+              HookApiVersion: 0,
+              HookNamespace: "00".repeat(32),
+              HookOn: calculateHookOn(["Invoke"]),
+            },
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+  await client.submitAndWait(
+    {
+      TransactionType: "SetHook",
+      Account: wallet.address,
+      Hooks: [
+        {
+          Hook: {
+            CreateCode: readFileSync("contracts/index.wasm")
+              .toString("hex")
+              .toUpperCase(),
+            Flags: SetHookFlags.hsfOverride,
+            HookApiVersion: 0,
+            HookNamespace: "00".repeat(32),
+            HookOn: calculateHookOn(["Invoke"]),
+          },
+        },
+      ],
+    },
+    { wallet },
+  );
+  clearInterval(intervalId);
+  await client.disconnect();
+};
 
 type VerificationData = {
   signature: {
-    r: Buffer
-    s: Buffer
-  }
+    r: Buffer;
+    s: Buffer;
+  };
   publicKey: {
-    x: Buffer
-    y: Buffer
-  }
-  authData: Buffer
-  pre: Buffer
-  post:Buffer
-}
+    x: Buffer;
+    y: Buffer;
+  };
+  authData: Buffer;
+  pre: Buffer;
+  post: Buffer;
+};
 
 const bufferToHex = (buffer: ArrayBuffer) => {
   return [...new Uint8Array(buffer)]
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("").toUpperCase();
-}
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+};
 
-const submitPasskeyTransaction = async (address: string, challenge: Buffer, verificationData: VerificationData) => {
-  await client.connect()
+const submitPasskeyTransaction = async (
+  address: string,
+  challenge: Buffer,
+  verificationData: VerificationData,
+) => {
+  await client.connect();
   const intervalId = setInterval(() => {
-    client.request({ command: 'ledger_accept' as any })
-  }, 500)
-  await client.submitAndWait({
-    TransactionType: 'Invoke',
-    Account: genesis.address,
-    Destination: address,
-    Blob: challenge.toString('hex').toUpperCase(),
-    HookParameters: [
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('auth').toUpperCase(),
-          HookParameterValue: verificationData.authData.toString('hex').toUpperCase(),
+    client.request({ command: "ledger_accept" as any });
+  }, 500);
+  await client.submitAndWait(
+    {
+      TransactionType: "Invoke",
+      Account: genesis.address,
+      Destination: address,
+      Blob: challenge.toString("hex").toUpperCase(),
+      HookParameters: [
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("auth").toUpperCase(),
+            HookParameterValue: verificationData.authData
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('x').toUpperCase(),
-          HookParameterValue: verificationData.publicKey.x.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("x").toUpperCase(),
+            HookParameterValue: verificationData.publicKey.x
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      }, {
-        HookParameter: {
-          HookParameterName: convertStringToHex('y').toUpperCase(),
-          HookParameterValue: verificationData.publicKey.y.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("y").toUpperCase(),
+            HookParameterValue: verificationData.publicKey.y
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('r').toUpperCase(),
-          HookParameterValue: verificationData.signature.r.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("r").toUpperCase(),
+            HookParameterValue: verificationData.signature.r
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('s').toUpperCase(),
-          HookParameterValue: verificationData.signature.s.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("s").toUpperCase(),
+            HookParameterValue: verificationData.signature.s
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('pre').toUpperCase(),
-          HookParameterValue: verificationData.pre.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("pre").toUpperCase(),
+            HookParameterValue: verificationData.pre
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-      {
-        HookParameter: {
-          HookParameterName: convertStringToHex('post').toUpperCase(),
-          HookParameterValue: verificationData.post.toString('hex').toUpperCase(),
+        {
+          HookParameter: {
+            HookParameterName: convertStringToHex("post").toUpperCase(),
+            HookParameterValue: verificationData.post
+              .toString("hex")
+              .toUpperCase(),
+          },
         },
-      },
-    ]
-  }, { wallet: genesis })
-  clearInterval(intervalId)
-  await client.request({ command: 'ledger_accept' as any })
+      ],
+    },
+    { wallet: genesis },
+  );
+  clearInterval(intervalId);
+  await client.request({ command: "ledger_accept" as any });
   const tx = await client.request({
-    command: 'account_tx',
+    command: "account_tx",
     account: address,
-    ledger_index: 'validated',
+    ledger_index: "validated",
     limit: 1,
-  })
-  await client.disconnect()
-  return tx.result.transactions[0]
-}
+  });
+  await client.disconnect();
+  return tx.result.transactions[0];
+};
 
-export { client, generateWallet, fundWallet, installHook, submitPasskeyTransaction }
+export {
+  client,
+  generateWallet,
+  fundWallet,
+  installHook,
+  submitPasskeyTransaction,
+};
